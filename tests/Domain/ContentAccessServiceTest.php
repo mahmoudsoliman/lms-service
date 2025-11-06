@@ -6,7 +6,7 @@ namespace Lms\Tests\Domain;
 
 use DateTimeImmutable;
 use DateTimeZone;
-use Lms\Application\Port\CourseRepository;
+use Lms\Domain\Interfaces\CourseRepository;
 use Lms\Domain\Enum\AccessDenialReason;
 use Lms\Domain\Exception\AccessDeniedException;
 use Lms\Domain\Model\AccessDecision;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Lms\Infrastructure\Persistence;
 
-use Lms\Application\Port\CourseRepository;
+use Lms\Domain\Interfaces\CourseRepository;
 use Lms\Domain\Model\Course;
 use Lms\Domain\Model\Value\CourseId;
 

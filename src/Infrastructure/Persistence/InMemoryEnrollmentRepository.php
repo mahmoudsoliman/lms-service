@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Lms\Infrastructure\Persistence;
 
 use DateTimeImmutable;
-use Lms\Application\Port\EnrollmentRepository;
+use Lms\Domain\Interfaces\EnrollmentRepository;
 use Lms\Domain\Model\Enrollment;
 use Lms\Domain\Model\Value\CourseId;
 use Lms\Domain\Model\Value\StudentId;

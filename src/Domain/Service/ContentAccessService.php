@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Lms\Domain\Service;
 
 use DateTimeImmutable;
-use Lms\Application\Port\CourseRepository;
+use Lms\Domain\Interfaces\CourseRepository;
 use Lms\Domain\Enum\AccessDenialReason;
 use Lms\Domain\Exception\AccessDeniedException;
 use Lms\Domain\Model\CourseContent;

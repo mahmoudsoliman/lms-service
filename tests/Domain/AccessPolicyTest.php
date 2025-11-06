@@ -6,8 +6,8 @@ namespace Lms\Tests\Domain;
 
 use DateTimeImmutable;
 use DateTimeZone;
-use Lms\Application\Port\CourseRepository;
-use Lms\Application\Port\EnrollmentRepository;
+use Lms\Domain\Interfaces\CourseRepository;
+use Lms\Domain\Interfaces\EnrollmentRepository;
 use Lms\Domain\Enum\AccessDenialReason;
 use Lms\Domain\Model\AccessDecision;
 use Lms\Domain\Model\Course;

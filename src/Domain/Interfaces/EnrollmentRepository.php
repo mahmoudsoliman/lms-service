@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Lms\Application\Port;
+namespace Lms\Domain\Interfaces;
 
 use DateTimeImmutable;
 use Lms\Domain\Model\Enrollment;
