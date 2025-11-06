@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Lms\Domain\Service;
+namespace Lms\Domain\Interfaces;
 
 use Lms\Domain\Model\AccessDecision;
 use Lms\Domain\Model\Value\ContentId;

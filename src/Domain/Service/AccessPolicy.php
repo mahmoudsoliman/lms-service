@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Lms\Domain\Service;
 
+use Lms\Domain\Interfaces\AccessPolicyInterface;
 use Lms\Domain\Interfaces\Clock;
 use Lms\Domain\Interfaces\CourseRepository;
 use Lms\Domain\Interfaces\EnrollmentRepository;

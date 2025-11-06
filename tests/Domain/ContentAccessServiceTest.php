@@ -19,7 +19,7 @@ use Lms\Domain\Model\Value\ContentId;
 use Lms\Domain\Model\Value\CourseId;
 use Lms\Domain\Model\Value\DateRange;
 use Lms\Domain\Model\Value\StudentId;
-use Lms\Domain\Service\AccessPolicyInterface;
+use Lms\Domain\Interfaces\AccessPolicyInterface;
 use Lms\Domain\Service\ContentAccessService;
 use PHPUnit\Framework\TestCase;
 
