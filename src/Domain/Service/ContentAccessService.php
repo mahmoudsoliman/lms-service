@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Lms\Domain\Service;
 
-use DateTimeImmutable;
+use Lms\Domain\Interfaces\Clock;
 use Lms\Domain\Interfaces\CourseRepository;
 use Lms\Domain\Enum\AccessDenialReason;
 use Lms\Domain\Exception\AccessDeniedException;
@@ -20,13 +20,14 @@ final class ContentAccessService
 {
     public function __construct(
         private readonly AccessPolicyInterface $accessPolicy,
-        private readonly CourseRepository $courseRepository
+        private readonly CourseRepository $courseRepository,
+        private readonly Clock $clock
     ) {
     }
 
-    public function getContent(StudentId $studentId, CourseId $courseId, ContentId $contentId, DateTimeImmutable $at): CourseContent
+    public function getContent(StudentId $studentId, CourseId $courseId, ContentId $contentId): CourseContent
     {
-        $decision = $this->accessPolicy->decide($studentId, $courseId, $contentId, $at);
+        $decision = $this->accessPolicy->decide($studentId, $courseId, $contentId);
         if (!$decision->allowed) {
             throw new AccessDeniedException($decision->reason);
         }
@@ -44,9 +45,9 @@ final class ContentAccessService
         return $content;
     }
 
-    public function getLesson(StudentId $studentId, CourseId $courseId, ContentId $lessonId, DateTimeImmutable $at): Lesson
+    public function getLesson(StudentId $studentId, CourseId $courseId, ContentId $lessonId): Lesson
     {
-        $content = $this->getContent($studentId, $courseId, $lessonId, $at);
+        $content = $this->getContent($studentId, $courseId, $lessonId);
 
         if (!$content instanceof Lesson) {
             throw new AccessDeniedException(AccessDenialReason::CONTENT_NOT_AVAILABLE, 'Content is not a lesson');
@@ -55,9 +56,9 @@ final class ContentAccessService
         return $content;
     }
 
-    public function getHomework(StudentId $studentId, CourseId $courseId, ContentId $homeworkId, DateTimeImmutable $at): Homework
+    public function getHomework(StudentId $studentId, CourseId $courseId, ContentId $homeworkId): Homework
     {
-        $content = $this->getContent($studentId, $courseId, $homeworkId, $at);
+        $content = $this->getContent($studentId, $courseId, $homeworkId);
 
         if (!$content instanceof Homework) {
             throw new AccessDeniedException(AccessDenialReason::CONTENT_NOT_AVAILABLE, 'Content is not homework');
@@ -66,9 +67,9 @@ final class ContentAccessService
         return $content;
     }
 
-    public function getPrepMaterial(StudentId $studentId, CourseId $courseId, ContentId $prepId, DateTimeImmutable $at): PrepMaterial
+    public function getPrepMaterial(StudentId $studentId, CourseId $courseId, ContentId $prepId): PrepMaterial
     {
-        $content = $this->getContent($studentId, $courseId, $prepId, $at);
+        $content = $this->getContent($studentId, $courseId, $prepId);
 
         if (!$content instanceof PrepMaterial) {
             throw new AccessDeniedException(AccessDenialReason::CONTENT_NOT_AVAILABLE, 'Content is not prep material');

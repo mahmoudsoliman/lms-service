@@ -6,6 +6,7 @@ namespace Lms\Tests\Domain;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Lms\Domain\Interfaces\Clock;
 use Lms\Domain\Interfaces\CourseRepository;
 use Lms\Domain\Interfaces\EnrollmentRepository;
 use Lms\Domain\Enum\AccessDenialReason;
@@ -26,14 +27,12 @@ final class AccessPolicyTest extends TestCase
     private DateTimeZone $timezone;
     private CourseRepository $courseRepository;
     private EnrollmentRepository $enrollmentRepository;
-    private AccessPolicy $accessPolicy;
 
     protected function setUp(): void
     {
         $this->timezone = new DateTimeZone('Europe/Madrid');
         $this->courseRepository = $this->createMock(CourseRepository::class);
         $this->enrollmentRepository = $this->createMock(EnrollmentRepository::class);
-        $this->accessPolicy = new AccessPolicy($this->courseRepository, $this->enrollmentRepository);
     }
 
     public function testDeniesWhenNoActiveEnrollment(): void
@@ -42,6 +41,7 @@ final class AccessPolicyTest extends TestCase
         $courseId = new CourseId('course-1');
         $contentId = new ContentId('content-1');
         $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
+        $clock = new FixedClock($at);
 
         $this->enrollmentRepository
             ->expects($this->once())
@@ -49,7 +49,8 @@ final class AccessPolicyTest extends TestCase
             ->with($studentId, $courseId, $at)
             ->willReturn(null);
 
-        $decision = $this->accessPolicy->decide($studentId, $courseId, $contentId, $at);
+        $accessPolicy = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock);
+        $decision = $accessPolicy->decide($studentId, $courseId, $contentId);
 
         $this->assertFalse($decision->allowed);
         $this->assertEquals(AccessDenialReason::ENROLLMENT_NOT_ACTIVE, $decision->reason);
@@ -62,6 +63,7 @@ final class AccessPolicyTest extends TestCase
         $contentId = new ContentId('content-1');
         $courseStart = new DateTimeImmutable('2025-05-20 00:00:00', $this->timezone);
         $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
+        $clock = new FixedClock($at);
 
         $enrollment = new Enrollment(
             $studentId,
@@ -80,6 +82,7 @@ final class AccessPolicyTest extends TestCase
         $this->enrollmentRepository
             ->expects($this->once())
             ->method('findActiveFor')
+            ->with($studentId, $courseId, $at)
             ->willReturn($enrollment);
 
         $this->courseRepository
@@ -88,7 +91,8 @@ final class AccessPolicyTest extends TestCase
             ->with($courseId)
             ->willReturn($course);
 
-        $decision = $this->accessPolicy->decide($studentId, $courseId, $contentId, $at);
+        $accessPolicy = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock);
+        $decision = $accessPolicy->decide($studentId, $courseId, $contentId);
 
         $this->assertFalse($decision->allowed);
         $this->assertEquals(AccessDenialReason::COURSE_NOT_STARTED, $decision->reason);
@@ -102,6 +106,7 @@ final class AccessPolicyTest extends TestCase
         $courseStart = new DateTimeImmutable('2025-05-13 00:00:00', $this->timezone);
         $lessonScheduled = new DateTimeImmutable('2025-05-15 10:00:00', $this->timezone);
         $at = new DateTimeImmutable('2025-05-15 09:59:59', $this->timezone);
+        $clock = new FixedClock($at);
 
         $enrollment = new Enrollment(
             $studentId,
@@ -120,6 +125,7 @@ final class AccessPolicyTest extends TestCase
         $this->enrollmentRepository
             ->expects($this->once())
             ->method('findActiveFor')
+            ->with($studentId, $courseId, $at)
             ->willReturn($enrollment);
 
         $this->courseRepository
@@ -128,7 +134,8 @@ final class AccessPolicyTest extends TestCase
             ->with($courseId)
             ->willReturn($course);
 
-        $decision = $this->accessPolicy->decide($studentId, $courseId, $contentId, $at);
+        $accessPolicy = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock);
+        $decision = $accessPolicy->decide($studentId, $courseId, $contentId);
 
         $this->assertFalse($decision->allowed);
         $this->assertEquals(AccessDenialReason::CONTENT_NOT_AVAILABLE, $decision->reason);
@@ -141,6 +148,7 @@ final class AccessPolicyTest extends TestCase
         $contentId = new ContentId('homework-1');
         $courseStart = new DateTimeImmutable('2025-05-13 00:00:00', $this->timezone);
         $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
+        $clock = new FixedClock($at);
 
         $enrollment = new Enrollment(
             $studentId,
@@ -159,6 +167,7 @@ final class AccessPolicyTest extends TestCase
         $this->enrollmentRepository
             ->expects($this->once())
             ->method('findActiveFor')
+            ->with($studentId, $courseId, $at)
             ->willReturn($enrollment);
 
         $this->courseRepository
@@ -167,7 +176,8 @@ final class AccessPolicyTest extends TestCase
             ->with($courseId)
             ->willReturn($course);
 
-        $decision = $this->accessPolicy->decide($studentId, $courseId, $contentId, $at);
+        $accessPolicy = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock);
+        $decision = $accessPolicy->decide($studentId, $courseId, $contentId);
 
         $this->assertTrue($decision->allowed);
         $this->assertNull($decision->reason);
@@ -179,6 +189,7 @@ final class AccessPolicyTest extends TestCase
         $courseId = new CourseId('course-1');
         $contentId = new ContentId('content-1');
         $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
+        $clock = new FixedClock($at);
 
         $enrollment = new Enrollment(
             $studentId,
@@ -192,6 +203,7 @@ final class AccessPolicyTest extends TestCase
         $this->enrollmentRepository
             ->expects($this->once())
             ->method('findActiveFor')
+            ->with($studentId, $courseId, $at)
             ->willReturn($enrollment);
 
         $this->courseRepository
@@ -200,7 +212,8 @@ final class AccessPolicyTest extends TestCase
             ->with($courseId)
             ->willReturn(null);
 
-        $decision = $this->accessPolicy->decide($studentId, $courseId, $contentId, $at);
+        $accessPolicy = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock);
+        $decision = $accessPolicy->decide($studentId, $courseId, $contentId);
 
         $this->assertFalse($decision->allowed);
         $this->assertEquals(AccessDenialReason::CONTENT_NOT_AVAILABLE, $decision->reason);
@@ -213,6 +226,7 @@ final class AccessPolicyTest extends TestCase
         $contentId = new ContentId('non-existent');
         $courseStart = new DateTimeImmutable('2025-05-13 00:00:00', $this->timezone);
         $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
+        $clock = new FixedClock($at);
 
         $enrollment = new Enrollment(
             $studentId,
@@ -229,6 +243,7 @@ final class AccessPolicyTest extends TestCase
         $this->enrollmentRepository
             ->expects($this->once())
             ->method('findActiveFor')
+            ->with($studentId, $courseId, $at)
             ->willReturn($enrollment);
 
         $this->courseRepository
@@ -237,7 +252,8 @@ final class AccessPolicyTest extends TestCase
             ->with($courseId)
             ->willReturn($course);
 
-        $decision = $this->accessPolicy->decide($studentId, $courseId, $contentId, $at);
+        $accessPolicy = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock);
+        $decision = $accessPolicy->decide($studentId, $courseId, $contentId);
 
         $this->assertFalse($decision->allowed);
         $this->assertEquals(AccessDenialReason::CONTENT_NOT_AVAILABLE, $decision->reason);

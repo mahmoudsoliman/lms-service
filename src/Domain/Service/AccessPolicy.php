@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Lms\Domain\Service;
 
-use DateTimeImmutable;
+use Lms\Domain\Interfaces\Clock;
 use Lms\Domain\Interfaces\CourseRepository;
 use Lms\Domain\Interfaces\EnrollmentRepository;
 use Lms\Domain\Enum\AccessDenialReason;
@@ -17,12 +17,15 @@ final class AccessPolicy implements AccessPolicyInterface
 {
     public function __construct(
         private readonly CourseRepository $courseRepository,
-        private readonly EnrollmentRepository $enrollmentRepository
+        private readonly EnrollmentRepository $enrollmentRepository,
+        private readonly Clock $clock
     ) {
     }
 
-    public function decide(StudentId $studentId, CourseId $courseId, ContentId $contentId, DateTimeImmutable $at): AccessDecision
+    public function decide(StudentId $studentId, CourseId $courseId, ContentId $contentId): AccessDecision
     {
+        $at = $this->clock->now();
+
         // 1. Check enrollment
         $enrollment = $this->enrollmentRepository->findActiveFor($studentId, $courseId, $at);
         if ($enrollment === null) {

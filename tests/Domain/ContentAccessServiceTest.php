@@ -6,6 +6,7 @@ namespace Lms\Tests\Domain;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Lms\Domain\Interfaces\Clock;
 use Lms\Domain\Interfaces\CourseRepository;
 use Lms\Domain\Enum\AccessDenialReason;
 use Lms\Domain\Exception\AccessDeniedException;
@@ -25,6 +26,7 @@ use PHPUnit\Framework\TestCase;
 final class ContentAccessServiceTest extends TestCase
 {
     private DateTimeZone $timezone;
+    private Clock $clock;
     private AccessPolicyInterface $accessPolicy;
     private CourseRepository $courseRepository;
     private ContentAccessService $contentAccessService;
@@ -32,9 +34,10 @@ final class ContentAccessServiceTest extends TestCase
     protected function setUp(): void
     {
         $this->timezone = new DateTimeZone('Europe/Madrid');
+        $this->clock = new FixedClock(new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone));
         $this->accessPolicy = $this->createMock(AccessPolicyInterface::class);
         $this->courseRepository = $this->createMock(CourseRepository::class);
-        $this->contentAccessService = new ContentAccessService($this->accessPolicy, $this->courseRepository);
+        $this->contentAccessService = new ContentAccessService($this->accessPolicy, $this->courseRepository, $this->clock);
     }
 
     public function testGetContentReturnsContentWhenAccessAllowed(): void
@@ -42,7 +45,6 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $contentId = new ContentId('lesson-1');
-        $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
 
         $courseStart = new DateTimeImmutable('2025-05-13 00:00:00', $this->timezone);
         $period = new DateRange($courseStart, null);
@@ -53,7 +55,7 @@ final class ContentAccessServiceTest extends TestCase
         $this->accessPolicy
             ->expects($this->once())
             ->method('decide')
-            ->with($studentId, $courseId, $contentId, $at)
+            ->with($studentId, $courseId, $contentId)
             ->willReturn(AccessDecision::allow());
 
         $this->courseRepository
@@ -62,7 +64,7 @@ final class ContentAccessServiceTest extends TestCase
             ->with($courseId)
             ->willReturn($course);
 
-        $content = $this->contentAccessService->getContent($studentId, $courseId, $contentId, $at);
+        $content = $this->contentAccessService->getContent($studentId, $courseId, $contentId);
 
         $this->assertInstanceOf(Lesson::class, $content);
         $this->assertEquals($contentId, $content->id);
@@ -73,18 +75,17 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $contentId = new ContentId('content-1');
-        $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
 
         $this->accessPolicy
             ->expects($this->once())
             ->method('decide')
-            ->with($studentId, $courseId, $contentId, $at)
+            ->with($studentId, $courseId, $contentId)
             ->willReturn(AccessDecision::deny(AccessDenialReason::ENROLLMENT_NOT_ACTIVE));
 
         $this->expectException(AccessDeniedException::class);
         $this->expectExceptionMessage('Access denied: ENROLLMENT_NOT_ACTIVE');
 
-        $this->contentAccessService->getContent($studentId, $courseId, $contentId, $at);
+        $this->contentAccessService->getContent($studentId, $courseId, $contentId);
     }
 
     public function testGetContentThrowsExceptionWithEnrollmentNotActiveReason(): void
@@ -92,7 +93,6 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $contentId = new ContentId('content-1');
-        $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
 
         $this->accessPolicy
             ->expects($this->once())
@@ -100,7 +100,7 @@ final class ContentAccessServiceTest extends TestCase
             ->willReturn(AccessDecision::deny(AccessDenialReason::ENROLLMENT_NOT_ACTIVE));
 
         try {
-            $this->contentAccessService->getContent($studentId, $courseId, $contentId, $at);
+            $this->contentAccessService->getContent($studentId, $courseId, $contentId);
             $this->fail('Expected AccessDeniedException was not thrown');
         } catch (AccessDeniedException $e) {
             $this->assertEquals(AccessDenialReason::ENROLLMENT_NOT_ACTIVE, $e->reason);
@@ -112,7 +112,6 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $contentId = new ContentId('content-1');
-        $at = new DateTimeImmutable('2025-05-12 12:00:00', $this->timezone);
 
         $this->accessPolicy
             ->expects($this->once())
@@ -120,7 +119,7 @@ final class ContentAccessServiceTest extends TestCase
             ->willReturn(AccessDecision::deny(AccessDenialReason::COURSE_NOT_STARTED));
 
         try {
-            $this->contentAccessService->getContent($studentId, $courseId, $contentId, $at);
+            $this->contentAccessService->getContent($studentId, $courseId, $contentId);
             $this->fail('Expected AccessDeniedException was not thrown');
         } catch (AccessDeniedException $e) {
             $this->assertEquals(AccessDenialReason::COURSE_NOT_STARTED, $e->reason);
@@ -132,7 +131,6 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $contentId = new ContentId('content-1');
-        $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
 
         $this->accessPolicy
             ->expects($this->once())
@@ -140,7 +138,7 @@ final class ContentAccessServiceTest extends TestCase
             ->willReturn(AccessDecision::deny(AccessDenialReason::CONTENT_NOT_AVAILABLE));
 
         try {
-            $this->contentAccessService->getContent($studentId, $courseId, $contentId, $at);
+            $this->contentAccessService->getContent($studentId, $courseId, $contentId);
             $this->fail('Expected AccessDeniedException was not thrown');
         } catch (AccessDeniedException $e) {
             $this->assertEquals(AccessDenialReason::CONTENT_NOT_AVAILABLE, $e->reason);
@@ -152,7 +150,6 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $lessonId = new ContentId('lesson-1');
-        $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
 
         $courseStart = new DateTimeImmutable('2025-05-13 00:00:00', $this->timezone);
         $period = new DateRange($courseStart, null);
@@ -170,7 +167,7 @@ final class ContentAccessServiceTest extends TestCase
             ->method('get')
             ->willReturn($course);
 
-        $result = $this->contentAccessService->getLesson($studentId, $courseId, $lessonId, $at);
+        $result = $this->contentAccessService->getLesson($studentId, $courseId, $lessonId);
 
         $this->assertInstanceOf(Lesson::class, $result);
         $this->assertEquals($lessonId, $result->id);
@@ -181,7 +178,6 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $homeworkId = new ContentId('homework-1');
-        $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
 
         $courseStart = new DateTimeImmutable('2025-05-13 00:00:00', $this->timezone);
         $period = new DateRange($courseStart, null);
@@ -202,7 +198,7 @@ final class ContentAccessServiceTest extends TestCase
         $this->expectException(AccessDeniedException::class);
         $this->expectExceptionMessage('Content is not a lesson');
 
-        $this->contentAccessService->getLesson($studentId, $courseId, $homeworkId, $at);
+        $this->contentAccessService->getLesson($studentId, $courseId, $homeworkId);
     }
 
     public function testGetHomeworkReturnsHomeworkWhenAccessAllowed(): void
@@ -210,7 +206,6 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $homeworkId = new ContentId('homework-1');
-        $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
 
         $courseStart = new DateTimeImmutable('2025-05-13 00:00:00', $this->timezone);
         $period = new DateRange($courseStart, null);
@@ -228,7 +223,7 @@ final class ContentAccessServiceTest extends TestCase
             ->method('get')
             ->willReturn($course);
 
-        $result = $this->contentAccessService->getHomework($studentId, $courseId, $homeworkId, $at);
+        $result = $this->contentAccessService->getHomework($studentId, $courseId, $homeworkId);
 
         $this->assertInstanceOf(Homework::class, $result);
         $this->assertEquals($homeworkId, $result->id);
@@ -239,7 +234,6 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $lessonId = new ContentId('lesson-1');
-        $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
 
         $courseStart = new DateTimeImmutable('2025-05-13 00:00:00', $this->timezone);
         $period = new DateRange($courseStart, null);
@@ -260,7 +254,7 @@ final class ContentAccessServiceTest extends TestCase
         $this->expectException(AccessDeniedException::class);
         $this->expectExceptionMessage('Content is not homework');
 
-        $this->contentAccessService->getHomework($studentId, $courseId, $lessonId, $at);
+        $this->contentAccessService->getHomework($studentId, $courseId, $lessonId);
     }
 
     public function testGetPrepMaterialReturnsPrepMaterialWhenAccessAllowed(): void
@@ -268,7 +262,6 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $prepId = new ContentId('prep-1');
-        $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
 
         $courseStart = new DateTimeImmutable('2025-05-13 00:00:00', $this->timezone);
         $period = new DateRange($courseStart, null);
@@ -286,7 +279,7 @@ final class ContentAccessServiceTest extends TestCase
             ->method('get')
             ->willReturn($course);
 
-        $result = $this->contentAccessService->getPrepMaterial($studentId, $courseId, $prepId, $at);
+        $result = $this->contentAccessService->getPrepMaterial($studentId, $courseId, $prepId);
 
         $this->assertInstanceOf(PrepMaterial::class, $result);
         $this->assertEquals($prepId, $result->id);
@@ -297,7 +290,6 @@ final class ContentAccessServiceTest extends TestCase
         $studentId = new StudentId('student-1');
         $courseId = new CourseId('course-1');
         $lessonId = new ContentId('lesson-1');
-        $at = new DateTimeImmutable('2025-05-15 12:00:00', $this->timezone);
 
         $courseStart = new DateTimeImmutable('2025-05-13 00:00:00', $this->timezone);
         $period = new DateRange($courseStart, null);
@@ -318,7 +310,7 @@ final class ContentAccessServiceTest extends TestCase
         $this->expectException(AccessDeniedException::class);
         $this->expectExceptionMessage('Content is not prep material');
 
-        $this->contentAccessService->getPrepMaterial($studentId, $courseId, $lessonId, $at);
+        $this->contentAccessService->getPrepMaterial($studentId, $courseId, $lessonId);
     }
 }
 

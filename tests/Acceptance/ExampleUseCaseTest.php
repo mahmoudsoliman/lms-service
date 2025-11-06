@@ -20,6 +20,7 @@ use Lms\Domain\Service\AccessPolicy;
 use Lms\Domain\Service\ContentAccessService;
 use Lms\Infrastructure\Persistence\InMemoryCourseRepository;
 use Lms\Infrastructure\Persistence\InMemoryEnrollmentRepository;
+use Lms\Tests\Domain\FixedClock;
 use PHPUnit\Framework\TestCase;
 
 final class ExampleUseCaseTest extends TestCase
@@ -27,8 +28,6 @@ final class ExampleUseCaseTest extends TestCase
     private DateTimeZone $timezone;
     private InMemoryCourseRepository $courseRepository;
     private InMemoryEnrollmentRepository $enrollmentRepository;
-    private AccessPolicy $accessPolicy;
-    private ContentAccessService $contentAccessService;
     private StudentId $emmaId;
     private CourseId $biologyCourseId;
     private ContentId $lessonId;
@@ -40,8 +39,6 @@ final class ExampleUseCaseTest extends TestCase
         $this->timezone = new DateTimeZone('Europe/Madrid');
         $this->courseRepository = new InMemoryCourseRepository();
         $this->enrollmentRepository = new InMemoryEnrollmentRepository();
-        $this->accessPolicy = new AccessPolicy($this->courseRepository, $this->enrollmentRepository);
-        $this->contentAccessService = new ContentAccessService($this->accessPolicy, $this->courseRepository);
 
         $this->emmaId = new StudentId('emma-123');
         $this->biologyCourseId = new CourseId('biology-course-1');
@@ -66,8 +63,11 @@ final class ExampleUseCaseTest extends TestCase
 
         // Step 1: 2025-05-01: access Prep → Denied COURSE_NOT_STARTED
         $at1 = new DateTimeImmutable('2025-05-01 12:00:00', $this->timezone);
+        $clock1 = new FixedClock($at1);
+        $accessPolicy1 = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock1);
+        $contentAccessService1 = new ContentAccessService($accessPolicy1, $this->courseRepository, $clock1);
         try {
-            $this->contentAccessService->getPrepMaterial($this->emmaId, $this->biologyCourseId, $this->prepId, $at1);
+            $contentAccessService1->getPrepMaterial($this->emmaId, $this->biologyCourseId, $this->prepId);
             $this->fail('Expected AccessDeniedException was not thrown');
         } catch (AccessDeniedException $e) {
             $this->assertEquals('COURSE_NOT_STARTED', $e->reason->value);
@@ -75,13 +75,19 @@ final class ExampleUseCaseTest extends TestCase
 
         // Step 2: 2025-05-13: access Prep → Allowed
         $at2 = new DateTimeImmutable('2025-05-13 12:00:00', $this->timezone);
-        $prep = $this->contentAccessService->getPrepMaterial($this->emmaId, $this->biologyCourseId, $this->prepId, $at2);
+        $clock2 = new FixedClock($at2);
+        $accessPolicy2 = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock2);
+        $contentAccessService2 = new ContentAccessService($accessPolicy2, $this->courseRepository, $clock2);
+        $prep = $contentAccessService2->getPrepMaterial($this->emmaId, $this->biologyCourseId, $this->prepId);
         $this->assertEquals($this->prepId, $prep->id);
         $this->assertEquals('Biology Reading Guide', $prep->title);
 
         // Step 3: 2025-05-15 10:01: access Lesson → Allowed
         $at3 = new DateTimeImmutable('2025-05-15 10:01:00', $this->timezone);
-        $lesson = $this->contentAccessService->getLesson($this->emmaId, $this->biologyCourseId, $this->lessonId, $at3);
+        $clock3 = new FixedClock($at3);
+        $accessPolicy3 = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock3);
+        $contentAccessService3 = new ContentAccessService($accessPolicy3, $this->courseRepository, $clock3);
+        $lesson = $contentAccessService3->getLesson($this->emmaId, $this->biologyCourseId, $this->lessonId);
         $this->assertEquals($this->lessonId, $lesson->id);
         $this->assertEquals('Cell Structure', $lesson->title);
 
@@ -96,8 +102,11 @@ final class ExampleUseCaseTest extends TestCase
 
         // Step 5: 2025-05-21: access Homework → Denied ENROLLMENT_NOT_ACTIVE
         $at4 = new DateTimeImmutable('2025-05-21 12:00:00', $this->timezone);
+        $clock4 = new FixedClock($at4);
+        $accessPolicy4 = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock4);
+        $contentAccessService4 = new ContentAccessService($accessPolicy4, $this->courseRepository, $clock4);
         try {
-            $this->contentAccessService->getHomework($this->emmaId, $this->biologyCourseId, $this->homeworkId, $at4);
+            $contentAccessService4->getHomework($this->emmaId, $this->biologyCourseId, $this->homeworkId);
             $this->fail('Expected AccessDeniedException was not thrown');
         } catch (AccessDeniedException $e) {
             $this->assertEquals('ENROLLMENT_NOT_ACTIVE', $e->reason->value);
@@ -105,8 +114,11 @@ final class ExampleUseCaseTest extends TestCase
 
         // Step 6: 2025-05-30: access Homework → Denied ENROLLMENT_NOT_ACTIVE (because enrollment was shortened)
         $at5 = new DateTimeImmutable('2025-05-30 12:00:00', $this->timezone);
+        $clock5 = new FixedClock($at5);
+        $accessPolicy5 = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock5);
+        $contentAccessService5 = new ContentAccessService($accessPolicy5, $this->courseRepository, $clock5);
         try {
-            $this->contentAccessService->getHomework($this->emmaId, $this->biologyCourseId, $this->homeworkId, $at5);
+            $contentAccessService5->getHomework($this->emmaId, $this->biologyCourseId, $this->homeworkId);
             $this->fail('Expected AccessDeniedException was not thrown');
         } catch (AccessDeniedException $e) {
             $this->assertEquals('ENROLLMENT_NOT_ACTIVE', $e->reason->value);
@@ -114,8 +126,11 @@ final class ExampleUseCaseTest extends TestCase
 
         // Step 7: 2025-06-10: course still running but not enrolled → Denied ENROLLMENT_NOT_ACTIVE
         $at6 = new DateTimeImmutable('2025-06-10 12:00:00', $this->timezone);
+        $clock6 = new FixedClock($at6);
+        $accessPolicy6 = new AccessPolicy($this->courseRepository, $this->enrollmentRepository, $clock6);
+        $contentAccessService6 = new ContentAccessService($accessPolicy6, $this->courseRepository, $clock6);
         try {
-            $this->contentAccessService->getHomework($this->emmaId, $this->biologyCourseId, $this->homeworkId, $at6);
+            $contentAccessService6->getHomework($this->emmaId, $this->biologyCourseId, $this->homeworkId);
             $this->fail('Expected AccessDeniedException was not thrown');
         } catch (AccessDeniedException $e) {
             $this->assertEquals('ENROLLMENT_NOT_ACTIVE', $e->reason->value);
