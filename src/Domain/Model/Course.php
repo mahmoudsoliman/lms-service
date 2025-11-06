@@ -73,19 +73,19 @@ final class Course
     public function findContent(ContentId $contentId): ?CourseContent
     {
         foreach ($this->lessons as $lesson) {
-            if ($lesson->id->value === $contentId->value) {
+            if ($lesson->id->equals($contentId)) {
                 return $lesson;
             }
         }
 
         foreach ($this->homework as $hw) {
-            if ($hw->id->value === $contentId->value) {
+            if ($hw->id->equals($contentId)) {
                 return $hw;
             }
         }
 
         foreach ($this->prepMaterials as $prep) {
-            if ($prep->id->value === $contentId->value) {
+            if ($prep->id->equals($contentId)) {
                 return $prep;
             }
         }
