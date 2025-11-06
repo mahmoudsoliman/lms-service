@@ -21,7 +21,10 @@ composer test:acceptance   # Run acceptance tests only
 ### Domain Layer
 - **Value Objects**: StudentId, CourseId, ContentId, DateRange
 - **Entities**: Course, Lesson, Homework, PrepMaterial, Enrollment
-- **Domain Services**: AccessPolicy (decides access based on enrollment, course dates, and content availability)
+- **Domain Services**: 
+  - `AccessPolicy` (decides access based on enrollment, course dates, and content availability)
+  - `ContentAccessService` (retrieves course content after verifying access permissions)
+- **Exceptions**: AccessDeniedException (thrown when access is denied)
 - **Enums**: AccessDenialReason
 
 ### Application Layer
@@ -52,6 +55,8 @@ If all checks pass, access is allowed.
 
 ## Example Usage
 
+### Checking Access
+
 ```php
 use DateTimeImmutable;
 use Lms\Domain\Service\AccessPolicy;
@@ -62,14 +67,43 @@ $courseRepo = new InMemoryCourseRepository();
 $enrollmentRepo = new InMemoryEnrollmentRepository();
 $accessPolicy = new AccessPolicy($courseRepo, $enrollmentRepo);
 
-// Create course, enroll student, check access...
+// Check if access is allowed
 $at = new DateTimeImmutable('2025-05-15 12:00:00');
-$decision = $accessPolicy->decide(
-    $studentId,
-    $courseId,
-    $contentId,
-    $at
-);
+$decision = $accessPolicy->decide($studentId, $courseId, $contentId, $at);
+
+if ($decision->allowed) {
+    // Access granted
+} else {
+    // Access denied: $decision->reason
+}
+```
+
+### Accessing Content
+
+```php
+use DateTimeImmutable;
+use Lms\Domain\Exception\AccessDeniedException;
+use Lms\Domain\Service\AccessPolicy;
+use Lms\Domain\Service\ContentAccessService;
+use Lms\Infrastructure\Persistence\InMemoryCourseRepository;
+use Lms\Infrastructure\Persistence\InMemoryEnrollmentRepository;
+
+$courseRepo = new InMemoryCourseRepository();
+$enrollmentRepo = new InMemoryEnrollmentRepository();
+$accessPolicy = new AccessPolicy($courseRepo, $enrollmentRepo);
+$contentAccessService = new ContentAccessService($accessPolicy, $courseRepo);
+
+try {
+    // Get any content type
+    $content = $contentAccessService->getContent($studentId, $courseId, $contentId, $at);
+    
+    // Or get specific content types (type-safe)
+    $lesson = $contentAccessService->getLesson($studentId, $courseId, $lessonId, $at);
+    $homework = $contentAccessService->getHomework($studentId, $courseId, $homeworkId, $at);
+    $prep = $contentAccessService->getPrepMaterial($studentId, $courseId, $prepId, $at);
+} catch (AccessDeniedException $e) {
+    // Handle access denial: $e->reason contains the denial reason
+}
 ```
 
 ## Future HTTP Integration

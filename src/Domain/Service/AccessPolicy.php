@@ -13,7 +13,7 @@ use Lms\Domain\Model\Value\ContentId;
 use Lms\Domain\Model\Value\CourseId;
 use Lms\Domain\Model\Value\StudentId;
 
-final class AccessPolicy
+final class AccessPolicy implements AccessPolicyInterface
 {
     public function __construct(
         private readonly CourseRepository $courseRepository,
